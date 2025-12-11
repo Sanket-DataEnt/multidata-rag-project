@@ -16,18 +16,18 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # OpenAI Configuration
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: Optional[str] = None  # Required for embeddings and RAG
 
     # Pinecone Configuration
-    PINECONE_API_KEY: str
+    PINECONE_API_KEY: Optional[str] = None  # Required for vector storage
     PINECONE_ENVIRONMENT: str = "us-east-1-aws"
     PINECONE_INDEX_NAME: str = "rag-documents"
 
     # Supabase/PostgreSQL Configuration
-    DATABASE_URL: str
+    DATABASE_URL: Optional[str] = None  # Required for Text-to-SQL
 
     # OPIK Monitoring
-    OPIK_API_KEY: Optional[str] = None
+    OPIK_API_KEY: Optional[str] = None  # Optional for monitoring
 
     # Text Chunking Configuration
     CHUNK_SIZE: int = 512
