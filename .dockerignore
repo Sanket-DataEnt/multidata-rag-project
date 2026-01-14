@@ -57,7 +57,10 @@ README.md
 data/uploads/*
 !data/uploads/.gitkeep
 
-# Vanna ChromaDB storage (will be created in container)
+# Cached chunks and embeddings (will be mounted as volume)
+data/cached_chunks/
+
+# Vanna ChromaDB storage (deprecated - Vanna 2.0 uses Pinecone)
 data/vanna_chromadb/
 
 # Logs

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -12,6 +10,8 @@ services:
     volumes:
       # Mount uploads directory for persistent document storage
       - ./data/uploads:/app/data/uploads
+      # Mount cache directory for persistent chunk/embedding caching
+      - ./data/cached_chunks:/app/data/cached_chunks
       # Note: Vanna 2.0 now uses Pinecone cloud storage (no local chromadb needed)
     env_file:
       - .env
