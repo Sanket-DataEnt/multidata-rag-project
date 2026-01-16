@@ -100,3 +100,6 @@ notebooks/vanna_ai_text_to_sql_tutorial.ipynb
 CLAUDE.md
 
 app/services/sql_service.py.backup_vanna0x
+
+DEPLOYMENT.md
+LAMBDA_LAYERS.md
