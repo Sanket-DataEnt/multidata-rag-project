@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Multi-Source RAG + Text-to-SQL"
     APP_VERSION: str = "0.1.0"
     ENVIRONMENT: str = "development"
+    ROOT_PATH: str = ""  # Set to "/prod" for API Gateway, empty for local development
 
     # OpenAI Configuration
     OPENAI_API_KEY: Optional[str] = None  # Required for embeddings and RAG

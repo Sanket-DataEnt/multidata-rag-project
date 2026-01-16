@@ -46,6 +46,7 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    root_path=settings.ROOT_PATH,  # For API Gateway: "/prod", for local: ""
 )
 
 # Global service instances (initialized on startup if API keys are available)
