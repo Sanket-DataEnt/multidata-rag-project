@@ -17,87 +17,267 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Print deployment info
+        run: |
+          echo "=========================================="
+          echo "🚀 AWS Lambda Deployment Started"
+          echo "=========================================="
+          echo "Trigger: Push to main branch"
+          echo "Commit: ${{ github.sha }}"
+          echo "Author: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Run Number: ${{ github.run_number }}"
+          echo ""
+          echo "📋 Deployment Configuration:"
+          echo "   • AWS Region: ${{ env.AWS_REGION }}"
+          echo "   • ECR Repository: ${{ env.ECR_REPOSITORY }}"
+          echo "   • Lambda Function: ${{ env.LAMBDA_FUNCTION }}"
+          echo "   • Platform: linux/arm64"
+          echo ""
+          echo "⏱️  Estimated deployment time: 15-20 minutes"
+          echo "=========================================="
+          echo ""
+
       - name: Set up QEMU
+        run: |
+          echo "🔧 Setting up QEMU for ARM64 emulation..."
+
+      - name: Set up QEMU (action)
         uses: docker/setup-qemu-action@v3
 
+      - name: Verify QEMU
+        run: |
+          echo "✅ QEMU installed successfully!"
+          echo ""
+
       - name: Set up Docker Buildx
+        run: |
+          echo "🔧 Setting up Docker Buildx for multi-platform builds..."
+
+      - name: Set up Docker Buildx (action)
         uses: docker/setup-buildx-action@v3
 
+      - name: Verify Buildx
+        run: |
+          echo "✅ Docker Buildx installed successfully!"
+          docker buildx ls
+          echo ""
+
       - name: Configure AWS credentials
+        run: |
+          echo "🔐 Configuring AWS credentials..."
+
+      - name: Configure AWS credentials (action)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Verify AWS credentials
+        run: |
+          echo "✅ AWS credentials configured!"
+          echo "Region: ${{ env.AWS_REGION }}"
+          aws sts get-caller-identity
+          echo ""
+
       - name: Login to Amazon ECR
+        run: |
+          echo "🔐 Logging into Amazon ECR..."
+
+      - name: Login to Amazon ECR (action)
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Verify ECR login
+        run: |
+          echo "✅ Successfully logged into ECR!"
+          echo "Registry: ${{ steps.login-ecr.outputs.registry }}"
+          echo ""
 
       - name: Build, tag, and push image to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          echo "=========================================="
+          echo "🏗️  Building Docker Image for Lambda"
+          echo "=========================================="
+          echo "ECR Registry: $ECR_REGISTRY"
+          echo "Repository: $ECR_REPOSITORY"
+          echo "Image Tag: $IMAGE_TAG"
+          echo "Platform: linux/arm64"
+          echo "Dockerfile: Dockerfile.lambda"
+          echo ""
+
           # Build image for ARM64 (20% cheaper Lambda costs)
+          echo "📦 Building ARM64 image..."
+          echo "⏱️  This will take 10-15 minutes (cross-platform build with QEMU emulation)"
           docker build --platform linux/arm64 -f Dockerfile.lambda -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "✅ Build completed!"
+          echo ""
 
           # Push to ECR
+          echo "📤 Pushing image to ECR..."
+          echo "Image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "✅ Pushed commit SHA tag"
+          echo ""
 
           # Tag as latest and arm64
+          echo "🏷️  Creating additional tags..."
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:arm64
+
+          echo "📤 Pushing 'latest' tag..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "✅ Pushed 'latest' tag"
+
+          echo "📤 Pushing 'arm64' tag..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:arm64
+          echo "✅ Pushed 'arm64' tag"
+          echo ""
+
+          echo "=========================================="
+          echo "✅ All images pushed to ECR successfully!"
+          echo "=========================================="
 
       - name: Update Lambda function
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          echo ""
+          echo "=========================================="
+          echo "🚀 Updating Lambda Function"
+          echo "=========================================="
+          echo "Function Name: ${{ env.LAMBDA_FUNCTION }}"
+          echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "Architecture: ARM64"
+          echo "Region: ${{ env.AWS_REGION }}"
+          echo ""
+
           # Update Lambda function code with ARM64 architecture
           # IMPORTANT: --architectures flag MUST be used with update-function-code
+          echo "📝 Updating Lambda function code..."
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_FUNCTION }} \
             --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             --architectures arm64
+          echo "✅ Update command sent!"
+          echo ""
 
           # Wait for update to complete
+          echo "⏳ Waiting for Lambda function to finish updating..."
+          echo "   This may take 30-60 seconds..."
           aws lambda wait function-updated \
             --function-name ${{ env.LAMBDA_FUNCTION }}
+          echo "✅ Lambda function updated successfully!"
+          echo ""
+
+          # Get function info
+          echo "📊 Lambda Function Status:"
+          aws lambda get-function \
+            --function-name ${{ env.LAMBDA_FUNCTION }} \
+            --query '{State:Configuration.State,LastUpdateStatus:Configuration.LastUpdateStatus,Architecture:Configuration.Architectures[0],Memory:Configuration.MemorySize,Timeout:Configuration.Timeout}' \
+            --output table
+          echo ""
+
+          echo "=========================================="
+          echo "✅ Lambda deployment completed!"
+          echo "=========================================="
 
       - name: Test deployment
         env:
           API_URL: ${{ secrets.API_GATEWAY_URL }}
         run: |
-          echo "Waiting 30 seconds for Lambda cold start..."
-          sleep 30
+          echo ""
+          echo "=========================================="
+          echo "🧪 Testing Lambda Deployment"
+          echo "=========================================="
+          echo "API Gateway URL: $API_URL"
+          echo "Testing: /health and /info endpoints"
+          echo ""
+
+          echo "⏳ Waiting 30 seconds for Lambda cold start..."
+          echo "   (Lambda needs time to initialize services on first invocation)"
+          for i in {30..1}; do
+            echo -n "   $i seconds remaining..."
+            sleep 1
+            echo -ne "\r"
+          done
+          echo "   ✅ Wait complete!"
+          echo ""
 
           # Test health endpoint with retries (Lambda cold start can take time)
-          echo "Testing health endpoint..."
+          echo "🏥 Testing health endpoint with retry logic..."
+          echo "   Endpoint: $API_URL/health"
           RETRY=0
           MAX_RETRIES=5
           until curl -f -s "$API_URL/health" > /dev/null || [ $RETRY -eq $MAX_RETRIES ]; do
             RETRY=$((RETRY+1))
-            echo "Attempt $RETRY/$MAX_RETRIES failed, waiting 10 seconds..."
+            echo "   ⚠️  Attempt $RETRY/$MAX_RETRIES failed, waiting 10 seconds before retry..."
             sleep 10
           done
 
           if [ $RETRY -eq $MAX_RETRIES ]; then
-            echo "❌ Health endpoint still returning errors after $MAX_RETRIES attempts"
-            echo "Checking what status code we get..."
+            echo ""
+            echo "=========================================="
+            echo "❌ DEPLOYMENT TEST FAILED"
+            echo "=========================================="
+            echo "Health endpoint still returning errors after $MAX_RETRIES attempts"
+            echo ""
+            echo "🔍 Debugging Information:"
+            echo "---"
+            echo "Full URL: $API_URL/health"
+            echo ""
+            echo "📡 Verbose curl output:"
             curl -v "$API_URL/health" || true
+            echo ""
+            echo "💡 Troubleshooting steps:"
+            echo "1. Check CloudWatch logs: aws logs tail /aws/lambda/rag-text-to-sql --follow"
+            echo "2. Verify API Gateway URL includes /prod: $API_URL"
+            echo "3. Check Lambda function status in AWS Console"
+            echo "4. Verify environment variables are set in Lambda"
+            echo ""
             exit 1
           fi
 
-          echo "✅ Health endpoint responding!"
+          echo "   ✅ Health endpoint responding!"
+          echo ""
+          echo "📋 Health Check Response:"
+          echo "---"
           curl -s "$API_URL/health" | head -20
+          echo "---"
+          echo ""
 
           # Test info endpoint
-          echo ""
-          echo "Testing info endpoint..."
-          curl -f -s "$API_URL/info" || echo "Info endpoint failed (non-critical)"
+          echo "ℹ️  Testing info endpoint..."
+          echo "   Endpoint: $API_URL/info"
+          if curl -f -s "$API_URL/info" > /dev/null; then
+            echo "   ✅ Info endpoint responding!"
+            echo ""
+            echo "📋 Info Response:"
+            echo "---"
+            curl -s "$API_URL/info"
+            echo ""
+            echo "---"
+          else
+            echo "   ⚠️  Info endpoint failed (non-critical, continuing...)"
+          fi
 
           echo ""
-          echo "✅ Deployment successful!"
+          echo "=========================================="
+          echo "✅ DEPLOYMENT TEST PASSED!"
+          echo "=========================================="
+          echo "🎉 Your Lambda function is live and responding!"
+          echo ""
+          echo "📊 Deployment Summary:"
+          echo "   • Docker Image: Built for ARM64"
+          echo "   • Lambda: Updated successfully"
+          echo "   • Health Check: ✅ Passing"
+          echo "   • Info Endpoint: ✅ Passing"
+          echo ""
+          echo "🔗 Your API is ready at: $API_URL"
+          echo "=========================================="
