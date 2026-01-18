@@ -41,3 +41,5 @@ pytest
 pytest-asyncio
 black
 ruff
+
+pydantic-settings

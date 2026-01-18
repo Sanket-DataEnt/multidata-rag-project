@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     OPIK_PROJECT_NAME: str = "Multi-Source-RAG"  # Add this line with your custom project name
 
     # Vanna 2.0 Configuration (Text-to-SQL)
-    VANNA_MODEL: str = "gpt-4o"  # OpenAI model for SQL generation
+    VANNA_MODEL: str = "gpt-4o-mini"  # OpenAI model for SQL generation
     VANNA_PINECONE_INDEX: str = "vanna-sql-training"  # Dedicated Pinecone index for SQL training
     VANNA_NAMESPACE: str = "sql-agent"  # Namespace within Pinecone index
 
@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # Storage paths (defaults to /tmp for Lambda, can be overridden for local dev)
     UPLOAD_DIR: str = "/tmp/uploads"
     CACHE_DIR: str = "/tmp/cached_chunks"
+
+    USER: str
+    PASSWORD: str
+    HOST: str
+    PORT: int
+    DBNAME: str
 
     @property
     def is_lambda(self) -> bool:
